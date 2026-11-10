@@ -6,13 +6,13 @@ Tujuan utama dari game ini adalah menghancurkan semua bata neon yang ada di laya
 
 ## 📸 Cuplikan Layar (Screenshots)
 
-![Main Menu / Title Screen](screenshot\7.png)
+![Main Menu / Title Screen](screenshot/7.png)
 *Tampilan animasi judul utama dengan RGB Neon Cycle.*
 
-![Gameplay CyberBrick](screenshot\2.png)
+![Gameplay CyberBrick](screenshot/2.png)
 *Gameplay dengan jejak neon (neon trail) dan power-up yang sedang aktif.*
 
-![Game Over Screen](screenshot\1.png)
+![Game Over Screen](screenshot/1.png)
 *Tampilan halaman game over.*
 
 ## ✨ Modifikasi dan Fitur Baru
