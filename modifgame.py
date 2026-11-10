@@ -226,7 +226,7 @@ class PowerUp(GameObject):
 
     def update(self):
         """Powerup jatuh perlahan ke bawah."""
-        self.move(0, 3) # Jatuh 3 piksel per frame
+        self.move(0, 2) # Jatuh 2 piksel per frame (disesuaikan untuk 60 FPS)
 
 
 class Laser(GameObject):
@@ -237,7 +237,7 @@ class Laser(GameObject):
 
     def update(self):
         """Laser bergerak lurus ke atas."""
-        self.move(0, -7) # Bergerak ke atas (sumbu Y negatif)
+        self.move(0, -4) # Bergerak ke atas (disesuaikan untuk 60 FPS)
 
 
 # ==========================================
@@ -282,9 +282,23 @@ class Game(tk.Frame):
         
         self.canvas.focus_set()
         
-        # Binding Kontrol Keyboard (Kiri/Kanan)
-        self.canvas.bind('<Left>', lambda _: self.paddle.move(-25))
-        self.canvas.bind('<Right>', lambda _: self.paddle.move(25))
+        # Binding Kontrol Keyboard (Kiri/Kanan) dengan sistem State agar pergerakan halus
+        self.keys = {'Left': False, 'Right': False}
+        self.canvas.bind('<KeyPress-Left>', lambda _: self.keys.update({'Left': True}))
+        self.canvas.bind('<KeyRelease-Left>', lambda _: self.keys.update({'Left': False}))
+        self.canvas.bind('<KeyPress-Right>', lambda _: self.keys.update({'Right': True}))
+        self.canvas.bind('<KeyRelease-Right>', lambda _: self.keys.update({'Right': False}))
+        
+        # Jalankan loop khusus untuk pergerakan paddle
+        self.paddle_loop()
+
+    def paddle_loop(self):
+        """Loop terpisah agar paddle bergerak super mulus dan bisa digerakkan kapan saja."""
+        if self.keys['Left']:
+            self.paddle.move(-12)
+        if self.keys['Right']:
+            self.paddle.move(12)
+        self.after(16, self.paddle_loop)
 
     def setup_level(self):
         """Membuat/Me-reset barisan bata untuk level saat ini."""
@@ -320,8 +334,8 @@ class Game(tk.Frame):
         paddle_coords = self.paddle.get_position()
         x = (paddle_coords[0] + paddle_coords[2]) * 0.5
         
-        # Semakin tinggi level, bola semakin cepat
-        new_speed = 6 + (self.level - 1) * 1.5
+        # Semakin tinggi level, bola semakin cepat (disesuaikan untuk 60 FPS)
+        new_speed = 3.5 + (self.level - 1) * 0.75
         self.ball = Ball(self.canvas, x, paddle_coords[1] - 15, base_speed=new_speed)
         self.paddle.set_ball(self.ball)
 
@@ -387,14 +401,14 @@ class Game(tk.Frame):
 
     def activate_powerup(self, ptype):
         """Memicu efek power-up dan mereset timer."""
-        # Efek berlangsung selama ~300 frame (sekitar 10 detik di 33ms)
-        self.powerup_timers[ptype] = 300 
+        # Efek berlangsung selama ~600 frame (sekitar 10 detik di 16ms / 60 FPS)
+        self.powerup_timers[ptype] = 600 
         
         if ptype == 'expand':
             self.paddle.change_width(self.paddle.default_width + 60)
         elif ptype == 'fast':
             # Tantangan: Kecepatan bertambah drastis
-            self.ball.speed = self.ball.base_speed + 4
+            self.ball.speed = self.ball.base_speed + 2.5
 
     def update_powerup_timers(self):
         """Mengurangi durasi timer powerup dan menonaktifkannya jika habis."""
@@ -414,7 +428,7 @@ class Game(tk.Frame):
             self.laser_cooldown -= 1
             if self.laser_cooldown <= 0:
                 self.shoot_laser()
-                self.laser_cooldown = 15 # Tembak setiap 15 frame (setengah detik)
+                self.laser_cooldown = 30 # Tembak setiap 30 frame (setengah detik pada 60 FPS)
 
     def shoot_laser(self):
         """Membuat objek proyektil laser dari kedua ujung paddle."""
@@ -451,7 +465,7 @@ class Game(tk.Frame):
                 self.lasers.remove(laser)
 
     def game_loop(self):
-        """Main Loop: Berjalan secara rekursif setiap frame (33ms)."""
+        """Main Loop: Berjalan secara rekursif setiap frame (16ms / ~60 FPS)."""
         self.check_collisions()
         self.handle_powerups()
         self.handle_lasers()
@@ -484,13 +498,36 @@ class Game(tk.Frame):
             self.paddle.change_width(self.paddle.default_width)
             
             if self.lives <= 0:
-                self.draw_text(self.width/2, self.height/2, 'GAME OVER!', size=24, color=COLOR_RED)
+                self.text = self.draw_text(self.width/2, self.height/2 - 20, 'GAME OVER!', size=24, color=COLOR_RED)
+                self.text_restart = self.draw_text(self.width/2, self.height/2 + 20, 'Tekan R untuk Restart', size=14, color=COLOR_YELLOW)
+                self.canvas.bind('<r>', lambda _: self.restart_game())
+                self.canvas.bind('<R>', lambda _: self.restart_game())
             else:
                 self.after(1000, self.setup_game_state)
         else:
             # Perbarui posisi bola dan panggil loop ini lagi
             self.ball.update()
-            self.after(33, self.game_loop) # Menjalankan game pada ~30 FPS
+            self.after(16, self.game_loop) # Menjalankan game pada ~60 FPS
+
+    def restart_game(self):
+        """Mengulang permainan dari awal setelah Game Over."""
+        self.canvas.unbind('<r>')
+        self.canvas.unbind('<R>')
+        self.canvas.delete(self.text)
+        self.canvas.delete(self.text_restart)
+        
+        # Reset Data
+        self.lives = 3
+        self.score = 0
+        self.level = 1
+        
+        # Bersihkan layar dari powerup/laser tersisa
+        for p in self.powerups: p.delete()
+        for l in self.lasers: l.delete()
+        self.powerups.clear()
+        self.lasers.clear()
+        
+        self.setup_level()
 
     def next_level(self):
         """Membersihkan teks dan memuat susunan bata untuk level berikutnya."""
