@@ -66,6 +66,21 @@ class Ball(GameObject):
         coords = self.get_position()
         width = self.canvas.winfo_width()
         
+        # --- EFEK JEJAK NEON (NEON TRAIL) ---
+        x_center = (coords[0] + coords[2]) / 2
+        y_center = (coords[1] + coords[3]) / 2
+        trail_colors = [COLOR_CYAN, COLOR_MAGENTA, COLOR_GREEN, COLOR_YELLOW]
+        
+        # Membuat lingkaran kecil secara acak sebagai jejak
+        trail_radius = random.randint(2, 5)
+        trail_item = self.canvas.create_oval(
+            x_center - trail_radius, y_center - trail_radius,
+            x_center + trail_radius, y_center + trail_radius,
+            fill=random.choice(trail_colors), outline=''
+        )
+        # Hapus jejak setelah beberapa milidetik agar terlihat menghilang
+        self.canvas.after(120, lambda item=trail_item: self.canvas.delete(item))
+        
         # Pantulan kiri/kanan
         if coords[0] <= 0 or coords[2] >= width:
             self.direction[0] *= -1
@@ -259,6 +274,9 @@ class Game(tk.Frame):
         self.canvas.pack()
         self.pack()
 
+        # Menggambar Background Gradasi & Judul Game "CyberBrick"
+        self.draw_background()
+
         # Struktur Data Penyimpanan Objek
         self.items = {}      # Menyimpan bata
         self.powerups = []   # Menyimpan powerup aktif di layar
@@ -353,6 +371,26 @@ class Game(tk.Frame):
         """Fungsi pembantu untuk menggambar teks di layar."""
         font = ('Consolas', size, 'bold')
         return self.canvas.create_text(x, y, text=text, font=font, fill=color)
+
+    def draw_background(self):
+        """Menggambar background gradasi warna neon dan Watermark Judul Game."""
+        # Gradasi dari ungu tua (atas) ke biru gelap (bawah)
+        r1, g1, b1 = 20, 0, 35   # Dark Neon Purple
+        r2, g2, b2 = 5, 10, 20   # Very Dark Blue/Cyan
+        
+        for i in range(self.height):
+            r = int(r1 + (r2 - r1) * i / self.height)
+            g = int(g1 + (g2 - g1) * i / self.height)
+            b = int(b1 + (b2 - b1) * i / self.height)
+            color = f'#{r:02x}{g:02x}{b:02x}'
+            # Menggambar garis-garis horizontal untuk menciptakan efek gradasi
+            self.canvas.create_line(0, i, self.width, i, fill=color)
+            
+        # Watermark Judul Game di tengah layar (Tenggelam di background)
+        self.canvas.create_text(self.width/2, self.height/2, 
+                                text="CYBERBRICK", 
+                                font=('Consolas', 68, 'bold'), 
+                                fill='#201035') # Warna redup agar tidak mengganggu gameplay
 
     def setup_hud(self):
         """Membuat teks Heads-Up Display (Nyawa, Skor, Level)."""
@@ -549,7 +587,7 @@ class Game(tk.Frame):
 # ==========================================
 if __name__ == '__main__':
     root = tk.Tk()
-    root.title('Cyberpunk Brick Breaker')
+    root.title('CyberBrick')
     root.resizable(False, False) # Ukuran window tidak bisa diubah
     
     # Mengatur background window utama menyesuaikan tema gelap
