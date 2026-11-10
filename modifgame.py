@@ -295,6 +295,13 @@ class Game(tk.Frame):
         self.powerup_timers = {'expand': 0, 'laser': 0, 'fast': 0}
         self.laser_cooldown = 0
         
+        # Variabel untuk Judul Animasi Neon RGB
+        self.main_title = None
+        self.animating_title = False
+        self.title_colors = [COLOR_CYAN, COLOR_MAGENTA, COLOR_YELLOW, COLOR_GREEN, COLOR_RED]
+        self.color_index = 0
+        self.is_first_start = True
+        
         self.setup_level()
         self.setup_hud()
         
@@ -341,8 +348,15 @@ class Game(tk.Frame):
         """Menyiapkan bola dan status untuk mulai/melanjutkan permainan."""
         self.add_ball()
         self.update_hud()
-        self.text = self.draw_text(self.width/2, self.height/2,
-                                   'TEKAN SPASI UNTUK MULAI', size=16, color=COLOR_CYAN)
+        
+        if self.is_first_start:
+            self.show_animated_title(self.height/2 - 40)
+            self.text = self.draw_text(self.width/2, self.height/2 + 30,
+                                       'TEKAN SPASI UNTUK MULAI', size=16, color=COLOR_CYAN)
+        else:
+            self.text = self.draw_text(self.width/2, self.height/2,
+                                       'TEKAN SPASI UNTUK MELANJUTKAN', size=16, color=COLOR_CYAN)
+            
         self.canvas.bind('<space>', lambda _: self.start_game())
 
     def add_ball(self):
@@ -392,6 +406,35 @@ class Game(tk.Frame):
                                 font=('Consolas', 68, 'bold'), 
                                 fill='#201035') # Warna redup agar tidak mengganggu gameplay
 
+    def show_animated_title(self, y_pos):
+        """Menampilkan teks judul besar dengan efek warna RGB menyala."""
+        if self.main_title is not None:
+            self.canvas.delete(self.main_title)
+        
+        # Menggunakan font Impact yang tebal dan miring untuk kesan Cyberpunk/Edgy
+        self.main_title = self.canvas.create_text(
+            self.width/2, y_pos, text="CYBERBRICK",
+            font=('Impact', 56, 'italic'), fill=self.title_colors[0]
+        )
+        
+        if not self.animating_title:
+            self.animating_title = True
+            self.animate_title_color()
+
+    def hide_animated_title(self):
+        """Menghapus judul utama saat game sedang berjalan."""
+        if self.main_title is not None:
+            self.canvas.delete(self.main_title)
+            self.main_title = None
+        self.animating_title = False
+
+    def animate_title_color(self):
+        """Loop animasi untuk mengganti warna judul secara berulang (Efek RGB Neon)."""
+        if self.animating_title and self.main_title is not None:
+            self.color_index = (self.color_index + 1) % len(self.title_colors)
+            self.canvas.itemconfig(self.main_title, fill=self.title_colors[self.color_index])
+            self.after(100, self.animate_title_color) # Ganti warna setiap 100ms
+
     def setup_hud(self):
         """Membuat teks Heads-Up Display (Nyawa, Skor, Level)."""
         self.hud_lives = self.draw_text(50, 20, f'LIVES: {self.lives}', color=COLOR_RED)
@@ -413,6 +456,8 @@ class Game(tk.Frame):
         """Memicu dimulainya physics bola."""
         self.canvas.unbind('<space>')
         self.canvas.delete(self.text)
+        self.hide_animated_title()
+        self.is_first_start = False
         self.paddle.ball = None # Melepas bola dari paddle
         self.game_loop()
 
@@ -536,8 +581,9 @@ class Game(tk.Frame):
             self.paddle.change_width(self.paddle.default_width)
             
             if self.lives <= 0:
-                self.text = self.draw_text(self.width/2, self.height/2 - 20, 'GAME OVER!', size=24, color=COLOR_RED)
-                self.text_restart = self.draw_text(self.width/2, self.height/2 + 20, 'Tekan R untuk Restart', size=14, color=COLOR_YELLOW)
+                self.show_animated_title(self.height/2 - 50)
+                self.text = self.draw_text(self.width/2, self.height/2 + 20, 'GAME OVER!', size=24, color=COLOR_RED)
+                self.text_restart = self.draw_text(self.width/2, self.height/2 + 60, 'Tekan R untuk Restart', size=14, color=COLOR_YELLOW)
                 self.canvas.bind('<r>', lambda _: self.restart_game())
                 self.canvas.bind('<R>', lambda _: self.restart_game())
             else:
@@ -553,11 +599,13 @@ class Game(tk.Frame):
         self.canvas.unbind('<R>')
         self.canvas.delete(self.text)
         self.canvas.delete(self.text_restart)
+        self.hide_animated_title()
         
         # Reset Data
         self.lives = 3
         self.score = 0
         self.level = 1
+        self.is_first_start = True
         
         # Bersihkan layar dari powerup/laser tersisa
         for p in self.powerups: p.delete()
